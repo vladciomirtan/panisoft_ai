@@ -1,10 +1,11 @@
 import os
 import sys
+import random
 from document_processor import extract_text_from_docx
 from matcher import CVJobMatcher
 from config import OPENROUTE_API_KEY
 
-def test_sample():
+def test_sample(cv_index=None, job_index=None):
     """Test the matcher with a single CV and job description."""
     
     # Check if API key is provided
@@ -19,16 +20,22 @@ def test_sample():
     cv_dir = "DataSet/cv"
     job_dir = "DataSet/job_descriptions"
     
-    # Get first available CV and job description
-    cv_files = [f for f in os.listdir(cv_dir) if f.endswith('.docx')]
-    job_files = [f for f in os.listdir(job_dir) if f.endswith('.docx')]
+    # Get all CV and job description files
+    cv_files = sorted([f for f in os.listdir(cv_dir) if f.endswith('.docx')], 
+                     key=lambda x: int(x.split('_')[1]))  # Sort CVs numerically by number after cv_
+    job_files = sorted([f for f in os.listdir(job_dir) if f.endswith('.docx')], 
+                      key=lambda x: int(x.split('_')[2]))  # Sort jobs numerically by number after job_description_
     
     if not cv_files or not job_files:
         print("Error: No CV or job description files found.")
         sys.exit(1)
     
-    sample_cv_path = os.path.join(cv_dir, cv_files[0])
-    sample_job_path = os.path.join(job_dir, job_files[0])
+    # select files based on provided indices or randomly
+    cv_index = cv_index if cv_index is not None else random.randint(0, len(cv_files) - 1)
+    job_index = job_index if job_index is not None else random.randint(0, len(job_files) - 1)
+    
+    sample_cv_path = os.path.join(cv_dir, cv_files[cv_index])
+    sample_job_path = os.path.join(job_dir, job_files[job_index])
     
     print(f"Using CV: {sample_cv_path}")
     print(f"Using Job: {sample_job_path}")
@@ -57,4 +64,4 @@ def test_sample():
     print("\nTest completed successfully.")
 
 if __name__ == "__main__":
-    test_sample() 
+    test_sample(cv_index = 5, job_index = 10)
