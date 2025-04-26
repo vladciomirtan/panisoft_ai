@@ -8,11 +8,14 @@ This project uses AI to match CVs with job descriptions based on multiple criter
 
 ## Project Structure
 
-- `config.py` - Configuration settings
+- `config.py` - Configuration settings and API keys
 - `document_processor.py` - Functions to extract text from docx files
-- `matcher.py` - Core matching logic using LangChain and DeepSeek AI
-- `main.py` - Main application entry point
-- `prompts.py` - System and user prompts
+- `matcher.py` - Core matching logic using Google's Gemini API
+- `main.py` - Batch processing of all CVs against all job descriptions
+- `job_cv_matcher.py` - Match a specific job against multiple CVs
+- `cv_job_matcher.py` - Match a specific CV against multiple job descriptions
+- `chat_interface.py` - Interactive interface for one-to-one matching
+- `prompts.py` - System prompts for the AI
 - `requirements.txt` - Required dependencies
 
 ## Setup
@@ -22,9 +25,10 @@ This project uses AI to match CVs with job descriptions based on multiple criter
    pip install -r requirements.txt
    ```
 
-2. Set your OpenRoute API key:
+2. Set your Gemini API key:
    - Edit `config.py` and add your API key directly
-   - OR set the `OPENROUTE_API_KEY` environment variable
+   - OR set the `GEMINI_API_KEY` environment variable
+   - OR create a `.env` file with `GEMINI_API_KEY=your_key_here`
 
 3. Ensure your data is in the correct structure:
    ```
@@ -35,31 +39,44 @@ This project uses AI to match CVs with job descriptions based on multiple criter
 
 ## Usage
 
-Run the main application:
+### Full Batch Processing
+Run the main application to process all CVs against all job descriptions:
 ```
 python main.py
 ```
 
-This will:
-1. Load all CVs and job descriptions
-2. Match each CV against each job description
-3. Generate scores for each match based on the criteria
-4. Save results to `matching_results.txt`
-5. Display sample results in the console
+### Match a Specific Job to CVs
+Find the best CVs for a specific job:
+```
+python job_cv_matcher.py
+```
+
+### Match a Specific CV to Jobs
+Find the best jobs for a specific CV:
+```
+python cv_job_matcher.py
+```
+
+### Interactive Chat Interface
+Use the chat interface for guided matching:
+```
+python chat_interface.py
+```
 
 ## How It Works
 
-The system uses LangChain with DeepSeek AI to:
+The system uses Google's Gemini AI to:
 
 1. Extract text from CV and job description files
 2. Process each CV-job pair through a specialized prompt
 3. Generate scores for each matching criterion
 4. Calculate a weighted total score
-5. Provide reasoning for the match
-6. Rank candidates for each job based on their total score
+5. Provide detailed reasoning for the match
+6. Rank candidates for each job or jobs for each candidate based on total score
 
 ## Customization
 
 - Adjust weights in `config.py` to change the importance of each criterion
 - Modify prompts in `prompts.py` to change how the AI evaluates matches
-- Customize output format in `matcher.py` 
+- Customize output format in `matcher.py`
+- Adjust the Gemini model in `config.py` (gemini-2.0-flash or gemini-2.0-pro) 

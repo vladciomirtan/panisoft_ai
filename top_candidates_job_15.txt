@@ -1,0 +1,88 @@
+TOP 5 CANDIDATES FOR JOB ID 15
+================================================================================
+
+1. CV ID: 130 - Elena_Cernat
+   Match Score: 0.82 (82%)
+   Match Rating: Excellent Match ⭐⭐⭐⭐⭐
+
+   Reasoning:
+   
+           1. Industry Knowledge (10%): The candidate has 70% relevant industry experience.
+           
+           2. Technical Skills (30%): The candidate demonstrates 90% of the required technical skills.
+           
+           3. Overall Job Description Match (60%): The candidate's overall profile matches 80% of the job requirements.
+           
+           The weighted total score is: 0.82
+           
+
+--------------------------------------------------------------------------------
+
+2. CV ID: 142 - Amalia_Raduță
+   Match Score: 0.80 (80%)
+   Match Rating: Excellent Match ⭐⭐⭐⭐⭐
+
+   Reasoning:
+   
+           1. Industry Knowledge (10%): The candidate has 51% relevant industry experience.
+           
+           2. Technical Skills (30%): The candidate demonstrates 78% of the required technical skills.
+           
+           3. Overall Job Description Match (60%): The candidate's overall profile matches 86% of the job requirements.
+           
+           The weighted total score is: 0.80
+           
+
+--------------------------------------------------------------------------------
+
+3. CV ID: 125 - Andrei_Mihailescu
+   Match Score: 0.75 (75%)
+   Match Rating: Strong Match ⭐⭐⭐⭐
+
+   Reasoning:
+   
+           1. Industry Knowledge (10%): The candidate has 54% relevant industry experience.
+           
+           2. Technical Skills (30%): The candidate demonstrates 73% of the required technical skills.
+           
+           3. Overall Job Description Match (60%): The candidate's overall profile matches 80% of the job requirements.
+           
+           The weighted total score is: 0.75
+           
+
+--------------------------------------------------------------------------------
+
+4. CV ID: 119 - Raluca_Diaconescu
+   Match Score: 0.74 (74%)
+   Match Rating: Strong Match ⭐⭐⭐⭐
+
+   Reasoning:
+   
+           1. Industry Knowledge (10%): The candidate has 70% relevant industry experience.
+           
+           2. Technical Skills (30%): The candidate demonstrates 85% of the required technical skills.
+           
+           3. Overall Job Description Match (60%): The candidate's overall profile matches 70% of the job requirements.
+           
+           The weighted total score is: 0.74
+           
+
+--------------------------------------------------------------------------------
+
+5. CV ID: 128 - Alexandru_Mihail_Drăgulescu
+   Match Score: 0.74 (74%)
+   Match Rating: Strong Match ⭐⭐⭐⭐
+
+   Reasoning:
+   
+           1. Industry Knowledge (10%): The candidate has 88% relevant industry experience.
+           
+           2. Technical Skills (30%): The candidate demonstrates 76% of the required technical skills.
+           
+           3. Overall Job Description Match (60%): The candidate's overall profile matches 71% of the job requirements.
+           
+           The weighted total score is: 0.74
+           
+
+--------------------------------------------------------------------------------
+

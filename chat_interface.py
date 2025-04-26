@@ -1,13 +1,11 @@
 import os
 import sys
-from openai import OpenAI
-
-from config import OPENROUTE_API_KEY, MODEL_NAME, TEMPERATURE, MAX_TOKENS
-from prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from document_processor import extract_text_from_docx
+from matcher import CVJobMatcher
+from config import OPENROUTE_API_KEY
 
 def chat_interface():
-    """Simple command-line chat interface for the CV-Job matching AI."""
+    """Interactive chat interface for CV-Job matching."""
     
     # Check if API key is provided
     if not OPENROUTE_API_KEY:
@@ -15,11 +13,17 @@ def chat_interface():
         print("Please set your API key in the config.py file or as an environment variable.")
         sys.exit(1)
     
-    # Initialize the client
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=OPENROUTE_API_KEY
-    )
+    # Get paths to files
+    cv_dir = "DataSet/cv"
+    job_dir = "DataSet/job_descriptions"
+    
+    # Get list of CV and job description files
+    cv_files = [f for f in os.listdir(cv_dir) if f.endswith('.docx')]
+    job_files = [f for f in os.listdir(job_dir) if f.endswith('.docx')]
+    
+    # Sort files to ensure consistent ordering
+    cv_files.sort()
+    job_files.sort()
     
     # Display welcome message
     print("\n" + "=" * 80)
@@ -37,57 +41,225 @@ def chat_interface():
             break
         
         elif choice == "1":
-            # Get CV and job description files
-            cv_path = input("\nEnter the path to the CV file (.docx): ")
-            job_desc_path = input("Enter the path to the job description file (.docx): ")
+            # CV Selection options
+            print("\nCV Selection Options:")
+            print("1. Browse CVs")
+            print("2. Search by CV ID")
             
-            # Validate files
-            if not os.path.exists(cv_path) or not cv_path.endswith('.docx'):
-                print(f"Error: CV file '{cv_path}' does not exist or is not a .docx file.")
-                continue
+            cv_selection_choice = input("Choose option (1-2): ")
+            
+            if cv_selection_choice == "1":
+                # Show available CVs
+                print("\nAvailable CVs:")
+                for i, cv_file in enumerate(cv_files[:10]):  # Show first 10 CVs
+                    cv_id = cv_file.split('_')[1]
+                    cv_name = '_'.join(cv_file.split('_')[2:]).replace('.docx', '')
+                    print(f"{i+1}. ID: {cv_id} - {cv_name}")
                 
-            if not os.path.exists(job_desc_path) or not job_desc_path.endswith('.docx'):
-                print(f"Error: Job description file '{job_desc_path}' does not exist or is not a .docx file.")
+                print("Enter a number (1-10) or type 'more' to see more CVs")
+                cv_choice = input("Select a CV: ")
+                
+                if cv_choice.lower() == 'more':
+                    # Show all CVs with ID filter option
+                    cv_id_filter = input("Enter ID to filter CVs (or press Enter to show all): ")
+                    filtered_cvs = [f for f in cv_files if cv_id_filter in f.split('_')[1]] if cv_id_filter else cv_files
+                    
+                    for i, cv_file in enumerate(filtered_cvs):
+                        cv_id = cv_file.split('_')[1]
+                        cv_name = '_'.join(cv_file.split('_')[2:]).replace('.docx', '')
+                        print(f"{i+1}. ID: {cv_id} - {cv_name}")
+                    
+                    cv_index = int(input("Select a CV by number: ")) - 1
+                    if cv_index < 0 or cv_index >= len(filtered_cvs):
+                        print("Invalid selection. Please try again.")
+                        continue
+                    
+                    selected_cv_file = filtered_cvs[cv_index]
+                else:
+                    try:
+                        cv_index = int(cv_choice) - 1
+                        if cv_index < 0 or cv_index >= min(10, len(cv_files)):
+                            print("Invalid selection. Please try again.")
+                            continue
+                        
+                        selected_cv_file = cv_files[cv_index]
+                    except ValueError:
+                        print("Invalid input. Please enter a number.")
+                        continue
+            
+            elif cv_selection_choice == "2":
+                # Search by CV ID
+                cv_id_to_find = input("Enter CV ID: ")
+                matching_cvs = [f for f in cv_files if f.split('_')[1] == cv_id_to_find]
+                
+                if not matching_cvs:
+                    print(f"No CV found with ID {cv_id_to_find}.")
+                    # Show closest matches
+                    print("Closest matches:")
+                    for f in cv_files[:5]:
+                        cv_id = f.split('_')[1]
+                        cv_name = '_'.join(f.split('_')[2:]).replace('.docx', '')
+                        print(f"ID: {cv_id} - {cv_name}")
+                    continue
+                
+                if len(matching_cvs) == 1:
+                    selected_cv_file = matching_cvs[0]
+                    cv_id = selected_cv_file.split('_')[1]
+                    cv_name = '_'.join(selected_cv_file.split('_')[2:]).replace('.docx', '')
+                    print(f"Found CV: ID {cv_id} - {cv_name}")
+                else:
+                    print("Multiple CVs found with that ID:")
+                    for i, cv_file in enumerate(matching_cvs):
+                        cv_id = cv_file.split('_')[1]
+                        cv_name = '_'.join(cv_file.split('_')[2:]).replace('.docx', '')
+                        print(f"{i+1}. ID: {cv_id} - {cv_name}")
+                    
+                    cv_index = int(input("Select a CV by number: ")) - 1
+                    if cv_index < 0 or cv_index >= len(matching_cvs):
+                        print("Invalid selection. Please try again.")
+                        continue
+                    
+                    selected_cv_file = matching_cvs[cv_index]
+            else:
+                print("Invalid option. Please try again.")
                 continue
+            
+            # Job Selection options
+            print("\nJob Description Selection Options:")
+            print("1. Browse Job Descriptions")
+            print("2. Search by Job ID")
+            
+            job_selection_choice = input("Choose option (1-2): ")
+            
+            if job_selection_choice == "1":
+                # Show available job descriptions
+                print("\nAvailable Job Descriptions:")
+                for i, job_file in enumerate(job_files[:10]):  # Show first 10 jobs
+                    job_id = job_file.split('_')[2]
+                    job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                    print(f"{i+1}. ID: {job_id} - {job_title}")
+                
+                print("Enter a number (1-10) or type 'more' to see more jobs")
+                job_choice = input("Select a Job Description: ")
+                
+                if job_choice.lower() == 'more':
+                    # Show all jobs with title filter option
+                    job_title_filter = input("Enter job title keyword to filter (or press Enter to show all): ")
+                    filtered_jobs = [f for f in job_files if job_title_filter.lower() in f.lower()] if job_title_filter else job_files
+                    
+                    for i, job_file in enumerate(filtered_jobs):
+                        job_id = job_file.split('_')[2]
+                        job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                        print(f"{i+1}. ID: {job_id} - {job_title}")
+                    
+                    job_index = int(input("Select a Job Description by number: ")) - 1
+                    if job_index < 0 or job_index >= len(filtered_jobs):
+                        print("Invalid selection. Please try again.")
+                        continue
+                    
+                    selected_job_file = filtered_jobs[job_index]
+                else:
+                    try:
+                        job_index = int(job_choice) - 1
+                        if job_index < 0 or job_index >= min(10, len(job_files)):
+                            print("Invalid selection. Please try again.")
+                            continue
+                        
+                        selected_job_file = job_files[job_index]
+                    except ValueError:
+                        print("Invalid input. Please enter a number.")
+                        continue
+            
+            elif job_selection_choice == "2":
+                # Search by job ID
+                job_id_to_find = input("Enter Job ID: ")
+                matching_jobs = [f for f in job_files if f.split('_')[2] == job_id_to_find]
+                
+                if not matching_jobs:
+                    print(f"No job found with ID {job_id_to_find}.")
+                    # Show closest matches
+                    print("Closest matches:")
+                    for f in job_files[:5]:
+                        job_id = f.split('_')[2]
+                        job_title = '_'.join(f.split('_')[3:]).replace('.docx', '')
+                        print(f"ID: {job_id} - {job_title}")
+                    continue
+                
+                if len(matching_jobs) == 1:
+                    selected_job_file = matching_jobs[0]
+                    job_id = selected_job_file.split('_')[2]
+                    job_title = '_'.join(selected_job_file.split('_')[3:]).replace('.docx', '')
+                    print(f"Found Job: ID {job_id} - {job_title}")
+                else:
+                    print("Multiple jobs found with that ID:")
+                    for i, job_file in enumerate(matching_jobs):
+                        job_id = job_file.split('_')[2]
+                        job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                        print(f"{i+1}. ID: {job_id} - {job_title}")
+                    
+                    job_index = int(input("Select a Job Description by number: ")) - 1
+                    if job_index < 0 or job_index >= len(matching_jobs):
+                        print("Invalid selection. Please try again.")
+                        continue
+                    
+                    selected_job_file = matching_jobs[job_index]
+            else:
+                print("Invalid option. Please try again.")
+                continue
+            
+            # Get full paths
+            cv_path = os.path.join(cv_dir, selected_cv_file)
+            job_path = os.path.join(job_dir, selected_job_file)
+            
+            # Extract CV and job info for display
+            cv_id = selected_cv_file.split('_')[1]
+            cv_name = '_'.join(selected_cv_file.split('_')[2:]).replace('.docx', '')
+            job_id = selected_job_file.split('_')[2]
+            job_title = '_'.join(selected_job_file.split('_')[3:]).replace('.docx', '')
+            
+            print(f"\nSelected CV: ID {cv_id} - {cv_name}")
+            print(f"Selected Job: ID {job_id} - {job_title}")
             
             try:
                 # Extract text from the files
                 print("\nExtracting text from files...")
                 cv_content = extract_text_from_docx(cv_path)
-                job_description = extract_text_from_docx(job_desc_path)
+                job_content = extract_text_from_docx(job_path)
                 
-                # Format user content
-                user_content = f"""
-                ## CV:
-                {cv_content}
+                # Initialize matcher
+                matcher = CVJobMatcher()
                 
-                ## Job Description:
-                {job_description}
+                # Match CV with job description
+                print("\nMatching CV with job description...")
+                result = matcher.match(cv_content, job_content)
                 
-                Analyze the match between this CV and job description according to the criteria.
-                """
-                
-                # Get the response
-                print("\nAnalyzing the match... (this may take a moment)")
-                response = client.chat.completions.create(
-                    extra_headers={
-                        "HTTP-Referer": "https://example.com", # Required by OpenRouter
-                    },
-                    model=MODEL_NAME,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_content}
-                    ],
-                    temperature=TEMPERATURE,
-                    max_tokens=MAX_TOKENS
-                )
-                
-                # Display the response
+                # Display results
                 print("\n" + "=" * 80)
-                print("MATCH ANALYSIS")
-                print("=" * 80 + "\n")
-                print(response.choices[0].message.content)
+                print(f"MATCH ANALYSIS: CV {cv_id} ({cv_name}) → Job {job_id} ({job_title})")
+                print("=" * 80)
+                
+                print(f"\nIndustry Knowledge Score: {result.industry_knowledge_score:.2f} ({result.industry_knowledge_score*100:.0f}%)")
+                print(f"Technical Skills Score: {result.technical_skills_score:.2f} ({result.technical_skills_score*100:.0f}%)")
+                print(f"Job Description Match Score: {result.job_description_match_score:.2f} ({result.job_description_match_score*100:.0f}%)")
+                print(f"Total Score: {result.total_score:.2f} ({result.total_score*100:.0f}%)")
+                
+                print("\nReasoning:")
+                print(result.reasoning)
+                
                 print("\n" + "=" * 80)
+                print(f"Match Rating: ", end="")
+                total = result.total_score
+                if total >= 0.8:
+                    print("Excellent Match ⭐⭐⭐⭐⭐")
+                elif total >= 0.6:
+                    print("Strong Match ⭐⭐⭐⭐")
+                elif total >= 0.4:
+                    print("Good Match ⭐⭐⭐")
+                elif total >= 0.2:
+                    print("Fair Match ⭐⭐")
+                else:
+                    print("Poor Match ⭐")
+                print("=" * 80)
                 
             except Exception as e:
                 print(f"Error: {e}")

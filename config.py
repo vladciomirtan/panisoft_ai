@@ -5,10 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Key configuration
-OPENROUTE_API_KEY = os.getenv("OPENROUTE_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Model configuration
-MODEL_NAME = "deepseek/deepseek-v3-base:free"
+GEMINI_MODEL = "gemini-2.0-flash"  # or "gemini-2.0-pro"
+MODEL_NAME = GEMINI_MODEL
+
+# General model settings
 TEMPERATURE = 0.3
 MAX_TOKENS = 4096
 

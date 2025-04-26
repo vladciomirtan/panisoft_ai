@@ -2,18 +2,20 @@ import os
 from typing import Dict, List, Tuple
 import numpy as np
 from tqdm import tqdm
+import requests
+import json
 
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from config import (
-    OPENROUTE_API_KEY,
+    GEMINI_API_KEY,
     MODEL_NAME,
     TEMPERATURE,
     MAX_TOKENS,
     INDUSTRY_KNOWLEDGE_WEIGHT,
     TECHNICAL_SKILLS_WEIGHT,
-    JOB_DESCRIPTION_MATCH_WEIGHT
+    JOB_DESCRIPTION_MATCH_WEIGHT,
+    GEMINI_MODEL
 )
 from document_processor import load_cvs, load_job_descriptions
 
@@ -28,12 +30,14 @@ class MatchResult(BaseModel):
 class CVJobMatcher:
     """Class for matching CVs with job descriptions."""
     
-    def __init__(self, api_key: str = OPENROUTE_API_KEY):
-        # Set up OpenAI client with OpenRouter config
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key
-        )
+    def __init__(self, api_key: str = None):
+        """
+        Initialize the CVJobMatcher with an API key.
+        
+        Args:
+            api_key: API key to use (if None, will use the one from config)
+        """
+        self.api_key = api_key or GEMINI_API_KEY
         
         # Define the prompt template for matching
         self.system_prompt = """
@@ -81,22 +85,8 @@ class CVJobMatcher:
             Analyze the match between this CV and job description according to the criteria.
             """
             
-            # Call the OpenAI/OpenRouter API
-            response = self.client.chat.completions.create(
-                extra_headers={
-                    "HTTP-Referer": "https://example.com",  # Required by OpenRouter
-                },
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                temperature=TEMPERATURE,
-                max_tokens=MAX_TOKENS
-            )
-            
-            # Parse the response
-            text = response.choices[0].message.content
+            # Call Gemini API
+            text = self._call_gemini_api(user_content)
             
             # Extract scores from the response
             lines = text.strip().split('\n')
@@ -153,6 +143,40 @@ class CVJobMatcher:
                 total_score=0.0,
                 reasoning=f"Error calling the API: {str(e)}"
             )
+    
+    def _call_gemini_api(self, user_content: str) -> str:
+        """Call the Gemini API and return the response text."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
+        
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        # Combine system prompt and user content for Gemini
+        combined_prompt = f"{self.system_prompt}\n\n{user_content}"
+        
+        data = {
+            "contents": [{
+                "parts": [{"text": combined_prompt}]
+            }],
+            "generationConfig": {
+                "temperature": TEMPERATURE,
+                "maxOutputTokens": MAX_TOKENS
+            }
+        }
+        
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        
+        if response.status_code != 200:
+            raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
+        
+        response_json = response.json()
+        
+        # Extract the text from the response
+        try:
+            return response_json["candidates"][0]["content"]["parts"][0]["text"]
+        except KeyError:
+            raise Exception(f"Unexpected Gemini API response format: {response_json}")
     
     def match_all(self, cvs: Dict[str, str], job_descriptions: Dict[str, str]) -> Dict[str, List[Tuple[str, MatchResult]]]:
         """

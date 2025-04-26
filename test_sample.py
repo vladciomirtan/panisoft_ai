@@ -3,18 +3,18 @@ import sys
 import random
 from document_processor import extract_text_from_docx
 from matcher import CVJobMatcher
-from config import OPENROUTE_API_KEY
+from config import GEMINI_API_KEY
 
 def test_sample(cv_index=None, job_index=None):
     """Test the matcher with a single CV and job description."""
     
     # Check if API key is provided
-    if not OPENROUTE_API_KEY:
-        print("Error: OPENROUTE_API_KEY is not set.")
+    if not GEMINI_API_KEY:
+        print("Error: GEMINI_API_KEY is not set.")
         print("Please set your API key in the config.py file or as an environment variable.")
         sys.exit(1)
     
-    print("Testing CV-Job matching with a sample...")
+    print("Testing CV-Job matching with Gemini API...")
     
     # Get paths to sample files
     cv_dir = "DataSet/cv"
@@ -48,7 +48,7 @@ def test_sample(cv_index=None, job_index=None):
     matcher = CVJobMatcher()
     
     # Match CV with job description
-    print("\nMatching CV with job description...")
+    print("\nMatching CV with job description using Gemini API...")
     result = matcher.match(cv_content, job_content)
     
     # Display results
@@ -64,4 +64,4 @@ def test_sample(cv_index=None, job_index=None):
     print("\nTest completed successfully.")
 
 if __name__ == "__main__":
-    test_sample(cv_index = 5, job_index = 10)
+    test_sample()
