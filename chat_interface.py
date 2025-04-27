@@ -1,25 +1,27 @@
 import os
 import sys
-from document_processor import extract_text_from_docx
+from document_processor import extract_text
 from matcher import CVJobMatcher
-from config import OPENROUTE_API_KEY
+from config import GEMINI_API_KEY
 
 def chat_interface():
     """Interactive chat interface for CV-Job matching."""
     
     # Check if API key is provided
-    if not OPENROUTE_API_KEY:
-        print("Error: OPENROUTE_API_KEY is not set.")
+    if not GEMINI_API_KEY:
+        print("Error: GEMINI_API_KEY is not set.")
         print("Please set your API key in the config.py file or as an environment variable.")
         sys.exit(1)
+    
+    print(f"Using Gemini API")
     
     # Get paths to files
     cv_dir = "DataSet/cv"
     job_dir = "DataSet/job_descriptions"
     
     # Get list of CV and job description files
-    cv_files = [f for f in os.listdir(cv_dir) if f.endswith('.docx')]
-    job_files = [f for f in os.listdir(job_dir) if f.endswith('.docx')]
+    cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
+    job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
     
     # Sort files to ensure consistent ordering
     cv_files.sort()
@@ -45,13 +47,15 @@ def chat_interface():
             print("\nCV Selection Options:")
             print("1. Browse CVs")
             print("2. Search by CV ID")
+            print("3. Browse PDF CVs (without IDs)")
             
-            cv_selection_choice = input("Choose option (1-2): ")
+            cv_selection_choice = input("Choose option (1-3): ")
             
             if cv_selection_choice == "1":
                 # Show available CVs
                 print("\nAvailable CVs:")
-                for i, cv_file in enumerate(cv_files[:10]):  # Show first 10 CVs
+                docx_cv_files = [f for f in cv_files if f.endswith('.docx')]
+                for i, cv_file in enumerate(docx_cv_files[:10]):  # Show first 10 CVs
                     cv_id = cv_file.split('_')[1]
                     cv_name = '_'.join(cv_file.split('_')[2:]).replace('.docx', '')
                     print(f"{i+1}. ID: {cv_id} - {cv_name}")
@@ -62,7 +66,7 @@ def chat_interface():
                 if cv_choice.lower() == 'more':
                     # Show all CVs with ID filter option
                     cv_id_filter = input("Enter ID to filter CVs (or press Enter to show all): ")
-                    filtered_cvs = [f for f in cv_files if cv_id_filter in f.split('_')[1]] if cv_id_filter else cv_files
+                    filtered_cvs = [f for f in docx_cv_files if cv_id_filter in f.split('_')[1]] if cv_id_filter else docx_cv_files
                     
                     for i, cv_file in enumerate(filtered_cvs):
                         cv_id = cv_file.split('_')[1]
@@ -78,11 +82,11 @@ def chat_interface():
                 else:
                     try:
                         cv_index = int(cv_choice) - 1
-                        if cv_index < 0 or cv_index >= min(10, len(cv_files)):
+                        if cv_index < 0 or cv_index >= min(10, len(docx_cv_files)):
                             print("Invalid selection. Please try again.")
                             continue
                         
-                        selected_cv_file = cv_files[cv_index]
+                        selected_cv_file = docx_cv_files[cv_index]
                     except ValueError:
                         print("Invalid input. Please enter a number.")
                         continue
@@ -90,13 +94,14 @@ def chat_interface():
             elif cv_selection_choice == "2":
                 # Search by CV ID
                 cv_id_to_find = input("Enter CV ID: ")
-                matching_cvs = [f for f in cv_files if f.split('_')[1] == cv_id_to_find]
+                docx_cv_files = [f for f in cv_files if f.endswith('.docx')]
+                matching_cvs = [f for f in docx_cv_files if f.split('_')[1] == cv_id_to_find]
                 
                 if not matching_cvs:
                     print(f"No CV found with ID {cv_id_to_find}.")
                     # Show closest matches
                     print("Closest matches:")
-                    for f in cv_files[:5]:
+                    for f in docx_cv_files[:5]:
                         cv_id = f.split('_')[1]
                         cv_name = '_'.join(f.split('_')[2:]).replace('.docx', '')
                         print(f"ID: {cv_id} - {cv_name}")
@@ -120,6 +125,30 @@ def chat_interface():
                         continue
                     
                     selected_cv_file = matching_cvs[cv_index]
+            
+            elif cv_selection_choice == "3":
+                # Browse PDF CVs without IDs
+                pdf_cv_files = [f for f in cv_files if f.endswith('.pdf')]
+                
+                if not pdf_cv_files:
+                    print("No PDF CV files found in the directory.")
+                    continue
+                
+                print("\nAvailable PDF CVs:")
+                for i, cv_file in enumerate(pdf_cv_files):
+                    # For PDFs without standardized naming, just show the filename
+                    print(f"{i+1}. {cv_file}")
+                
+                try:
+                    cv_index = int(input("Select a PDF CV by number: ")) - 1
+                    if cv_index < 0 or cv_index >= len(pdf_cv_files):
+                        print("Invalid selection. Please try again.")
+                        continue
+                    
+                    selected_cv_file = pdf_cv_files[cv_index]
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+                    continue
             else:
                 print("Invalid option. Please try again.")
                 continue
@@ -135,9 +164,12 @@ def chat_interface():
                 # Show available job descriptions
                 print("\nAvailable Job Descriptions:")
                 for i, job_file in enumerate(job_files[:10]):  # Show first 10 jobs
-                    job_id = job_file.split('_')[2]
-                    job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
-                    print(f"{i+1}. ID: {job_id} - {job_title}")
+                    if job_file.endswith('.docx'):
+                        job_id = job_file.split('_')[2]
+                        job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                        print(f"{i+1}. ID: {job_id} - {job_title}")
+                    else:  # PDF files
+                        print(f"{i+1}. {job_file}")
                 
                 print("Enter a number (1-10) or type 'more' to see more jobs")
                 job_choice = input("Select a Job Description: ")
@@ -148,9 +180,12 @@ def chat_interface():
                     filtered_jobs = [f for f in job_files if job_title_filter.lower() in f.lower()] if job_title_filter else job_files
                     
                     for i, job_file in enumerate(filtered_jobs):
-                        job_id = job_file.split('_')[2]
-                        job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
-                        print(f"{i+1}. ID: {job_id} - {job_title}")
+                        if job_file.endswith('.docx'):
+                            job_id = job_file.split('_')[2]
+                            job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                            print(f"{i+1}. ID: {job_id} - {job_title}")
+                        else:  # PDF files
+                            print(f"{i+1}. {job_file}")
                     
                     job_index = int(input("Select a Job Description by number: ")) - 1
                     if job_index < 0 or job_index >= len(filtered_jobs):
@@ -173,13 +208,14 @@ def chat_interface():
             elif job_selection_choice == "2":
                 # Search by job ID
                 job_id_to_find = input("Enter Job ID: ")
-                matching_jobs = [f for f in job_files if f.split('_')[2] == job_id_to_find]
+                docx_job_files = [f for f in job_files if f.endswith('.docx')]
+                matching_jobs = [f for f in docx_job_files if f.split('_')[2] == job_id_to_find]
                 
                 if not matching_jobs:
                     print(f"No job found with ID {job_id_to_find}.")
                     # Show closest matches
                     print("Closest matches:")
-                    for f in job_files[:5]:
+                    for f in docx_job_files[:5]:
                         job_id = f.split('_')[2]
                         job_title = '_'.join(f.split('_')[3:]).replace('.docx', '')
                         print(f"ID: {job_id} - {job_title}")
@@ -212,19 +248,28 @@ def chat_interface():
             job_path = os.path.join(job_dir, selected_job_file)
             
             # Extract CV and job info for display
-            cv_id = selected_cv_file.split('_')[1]
-            cv_name = '_'.join(selected_cv_file.split('_')[2:]).replace('.docx', '')
-            job_id = selected_job_file.split('_')[2]
-            job_title = '_'.join(selected_job_file.split('_')[3:]).replace('.docx', '')
+            if selected_cv_file.endswith('.docx'):
+                cv_id = selected_cv_file.split('_')[1]
+                cv_name = '_'.join(selected_cv_file.split('_')[2:]).replace('.docx', '')
+                cv_display = f"ID {cv_id} - {cv_name}"
+            else:  # PDF files without standard naming
+                cv_display = selected_cv_file
             
-            print(f"\nSelected CV: ID {cv_id} - {cv_name}")
-            print(f"Selected Job: ID {job_id} - {job_title}")
+            if selected_job_file.endswith('.docx'):
+                job_id = selected_job_file.split('_')[2]
+                job_title = '_'.join(selected_job_file.split('_')[3:]).replace('.docx', '')
+                job_display = f"ID {job_id} - {job_title}"
+            else:  # PDF files without standard naming
+                job_display = selected_job_file
+            
+            print(f"\nSelected CV: {cv_display}")
+            print(f"Selected Job: {job_display}")
             
             try:
                 # Extract text from the files
                 print("\nExtracting text from files...")
-                cv_content = extract_text_from_docx(cv_path)
-                job_content = extract_text_from_docx(job_path)
+                cv_content = extract_text(cv_path)
+                job_content = extract_text(job_path)
                 
                 # Initialize matcher
                 matcher = CVJobMatcher()
@@ -235,7 +280,7 @@ def chat_interface():
                 
                 # Display results
                 print("\n" + "=" * 80)
-                print(f"MATCH ANALYSIS: CV {cv_id} ({cv_name}) → Job {job_id} ({job_title})")
+                print(f"MATCH ANALYSIS: {cv_display} → {job_display}")
                 print("=" * 80)
                 
                 print(f"\nIndustry Knowledge Score: {result.industry_knowledge_score:.2f} ({result.industry_knowledge_score*100:.0f}%)")

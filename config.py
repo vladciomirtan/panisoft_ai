@@ -18,6 +18,7 @@ MAX_TOKENS = 4096
 # Path configuration
 CV_DIR = "DataSet/cv"
 JOB_DESCRIPTIONS_DIR = "DataSet/job_descriptions"
+OUTPUT_DIR = "output"
 
 # Scoring weights
 INDUSTRY_KNOWLEDGE_WEIGHT = 0.1
