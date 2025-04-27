@@ -5,18 +5,21 @@ from document_processor import extract_text, load_job_descriptions, load_cvs
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
 
-def get_job_files(job_id=None):
+def get_job_files(job_id=None, base_dir=None):
     """
     Get job description files from the directory, optionally filtering by ID.
     
     Args:
         job_id (str, optional): ID of the job to filter by
+        base_dir (str, optional): Base directory path
         
     Returns:
         list: List of job files
         dict: Dictionary mapping file names to display names
     """
-    job_dir = "DataSet/job_descriptions"
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions")
     job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
     job_display_names = {}
     
@@ -57,7 +60,7 @@ def get_job_files(job_id=None):
     
     return job_files, job_display_names
 
-def get_cv_files():
+def get_cv_files(base_dir=None):
     """
     Get CV files from the directory.
     
@@ -65,7 +68,9 @@ def get_cv_files():
         list: List of CV files
         dict: Dictionary mapping file names to display names
     """
-    cv_dir = "DataSet/cv"
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
     cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
     cv_display_names = {}
     
@@ -118,8 +123,9 @@ def batch_match_job_to_cvs(job_identifier, num_cvs=20, top_matches=5, max_retrie
     print(f"Using Gemini API")
     
     # Get paths to directories
-    cv_dir = "DataSet/cv"
-    job_dir = "DataSet/job_descriptions"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
+    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions") 
     
     # Get job files matching the identifier
     job_files, job_display_names = get_job_files(job_identifier)

@@ -5,7 +5,7 @@ from document_processor import extract_text, load_job_descriptions, load_cvs
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
 
-def get_cv_files(cv_id=None):
+def get_cv_files(cv_id=None, base_dir=None):
     """
     Get CV files from the directory, optionally filtering by ID.
     
@@ -16,7 +16,9 @@ def get_cv_files(cv_id=None):
         list: List of CV files
         dict: Dictionary mapping file names to display names
     """
-    cv_dir = "DataSet/cv"
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
     cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
     cv_display_names = {}
     
@@ -79,9 +81,9 @@ def batch_match_cv_to_jobs(cv_identifier, num_jobs=20, top_matches=5, max_retrie
     print(f"Using Gemini API")
     
     # Get paths to directories
-    cv_dir = "DataSet/cv"
-    job_dir = "DataSet/job_descriptions"
-    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
+    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions")    
     # Get CV files matching the identifier
     cv_files, cv_display_names = get_cv_files(cv_identifier)
     
@@ -91,7 +93,7 @@ def batch_match_cv_to_jobs(cv_identifier, num_jobs=20, top_matches=5, max_retrie
     
     # Use the first matching CV file
     cv_file = cv_files[0]
-    cv_path = os.path.join(cv_dir, cv_file)
+    cv_path = os.path.abspath(os.path.join(cv_dir, cv_file))
     cv_content = extract_text(cv_path)
     
     # Get display name for the CV
@@ -138,7 +140,7 @@ def batch_match_cv_to_jobs(cv_identifier, num_jobs=20, top_matches=5, max_retrie
                 print(f"Processing {i+1}/{len(job_files)}: Job {job_id} - {job_title}")
                 
                 # Get job content
-                job_path = os.path.join(job_dir, job_file)
+                job_path = os.path.abspath(os.path.join(job_dir, job_file))
                 job_content = extract_text(job_path)
                 
                 # Match CV with job description
