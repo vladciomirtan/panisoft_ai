@@ -20,75 +20,13 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CV and Job Matching System")
-        self.setGeometry(0, 0, 900, 700)  # Slightly larger for modern look
+        self.setWindowState(Qt.WindowState.WindowMaximized)  # Set window to maximized state
 
         # Set background color for the main window
-        self.setStyleSheet("QMainWindow { background: #f6f8fa; }")
-
-        # Center the window on the screen
-        self.center_window()
-
-        # Create central widget and layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Card-like frame for the main content
-        card = QFrame()
-        card.setStyleSheet("""
-            QFrame {
-                background: white;
-                border-radius: 18px;
-                border: 1px solid #e0e0e0;
-                padding: 40px 40px 32px 40px;
+        self.setStyleSheet("""
+            QMainWindow { 
+                background: #f6f8fa; 
             }
-        """)
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(32)
-        shadow.setXOffset(0)
-        shadow.setYOffset(8)
-        shadow.setColor(Qt.GlobalColor.gray)
-        card.setGraphicsEffect(shadow)
-        card_layout = QVBoxLayout(card)
-        card_layout.setSpacing(28)
-
-        # Add title
-        title = QLabel("CV and Job Matching System")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont('Segoe UI', 28, QFont.Weight.Bold))
-        card_layout.addWidget(title)
-
-        # Add description
-        description = QLabel("Select an option to begin:")
-        description.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        description.setFont(QFont('Segoe UI', 15))
-        card_layout.addWidget(description)
-
-        # Add spacing
-        card_layout.addSpacing(10)
-
-        # Create horizontal layout for buttons
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(30)
-        self.add_buttons(button_layout)
-        card_layout.addLayout(button_layout)
-
-        # Add the card to the main layout, centered
-        main_layout.addStretch()
-        main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
-        main_layout.addStretch()
-
-    def center_window(self):
-        # Get the screen geometry
-        screen = QApplication.primaryScreen().geometry()
-        x = (screen.width() - self.width()) // 2
-        y = (screen.height() - self.height()) // 2
-        self.move(x, y)
-
-    def add_buttons(self, layout):
-        # Modern button style
-        button_style = """
             QPushButton {
                 background-color: #1976d2;
                 color: white;
@@ -98,8 +36,8 @@ class MainWindow(QMainWindow):
                 font-size: 22px;
                 margin: 4px 2px;
                 border-radius: 12px;
-                min-width: 220px;
-                min-height: 110px;
+                min-width: 280px;
+                min-height: 140px;
                 font-family: 'Segoe UI';
                 font-weight: bold;
                 transition: background 0.2s;
@@ -107,12 +45,59 @@ class MainWindow(QMainWindow):
             QPushButton:hover {
                 background-color: #1565c0;
             }
-        """
+        """)
 
+        # Create central widget and layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(40)
+
+        # Add title
+        title = QLabel("CV and Job Matching System")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont('Segoe UI', 32, QFont.Weight.Bold))
+        title.setStyleSheet("color: #1976d2;")
+        main_layout.addWidget(title)
+
+        # Add description
+        description = QLabel("Select an option to begin:")
+        description.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        description.setFont(QFont('Segoe UI', 18))
+        description.setStyleSheet("color: #424242;")
+        main_layout.addWidget(description)
+
+        # Create button container
+        button_container = QFrame()
+        button_container.setStyleSheet("""
+            QFrame {
+                background: white;
+                border-radius: 18px;
+                border: 1px solid #e0e0e0;
+                padding: 40px;
+            }
+        """)
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(32)
+        shadow.setXOffset(0)
+        shadow.setYOffset(8)
+        shadow.setColor(Qt.GlobalColor.gray)
+        button_container.setGraphicsEffect(shadow)
+
+        # Create button layout
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setSpacing(40)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        self.add_buttons(button_layout)
+
+        # Add button container to main layout
+        main_layout.addWidget(button_container, stretch=1)
+
+    def add_buttons(self, layout):
         # First button - Match Job to CVs
         match_job_button = QPushButton("Match a Specific\nJob to CVs")
         match_job_button.setFont(QFont('Segoe UI', 18, QFont.Weight.Bold))
-        match_job_button.setStyleSheet(button_style)
         match_job_button.setCursor(Qt.CursorShape.PointingHandCursor)
         match_job_button.clicked.connect(self.match_job_to_cvs)
         layout.addWidget(match_job_button)
@@ -120,15 +105,13 @@ class MainWindow(QMainWindow):
         # Second button - Match CV to Jobs
         match_cv_button = QPushButton("Match a Specific\nCV to Jobs")
         match_cv_button.setFont(QFont('Segoe UI', 18, QFont.Weight.Bold))
-        match_cv_button.setStyleSheet(button_style)
         match_cv_button.setCursor(Qt.CursorShape.PointingHandCursor)
         match_cv_button.clicked.connect(self.match_cv_to_jobs)
         layout.addWidget(match_cv_button)
 
-        # Third button - Interactive Chat
-        chat_button = QPushButton("Interactive\nChat Interface")
+        # Third button - Interactive Analyser
+        chat_button = QPushButton("Cv Analyser\nInterface")
         chat_button.setFont(QFont('Segoe UI', 18, QFont.Weight.Bold))
-        chat_button.setStyleSheet(button_style)
         chat_button.setCursor(Qt.CursorShape.PointingHandCursor)
         chat_button.clicked.connect(self.chat_interface)
         layout.addWidget(chat_button)
@@ -138,16 +121,12 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             selected_job = dialog.get_selected_job()
             if selected_job:
-                # Extract job ID from the selected text
-                job_id = selected_job.split('ID ')[1].split(' - ')[0]
+                # Use the file path directly instead of trying to extract ID
+                job_path = selected_job['file_path']
                 num_cvs = dialog.cv_count.value()
                 
-                # Get the parent directory path
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                job_dir = os.path.join(parent_dir, "DataSet/job_descriptions")
-                
                 # Perform matching
-                results, job_name = batch_match_job_to_cvs(job_id, num_cvs)
+                results, job_name = batch_match_job_to_cvs(job_path, num_cvs)
                 
                 # Show results
                 if results:
@@ -161,12 +140,12 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             selected_cv = dialog.get_selected_cv()
             if selected_cv:
-                # Extract CV ID from the selected text
-                cv_id = selected_cv.split('ID ')[1].split(' - ')[0]
+                # Use the file path directly instead of trying to extract ID
+                cv_path = selected_cv['file_path']
                 num_jobs = dialog.job_count.value()
                 
                 # Perform matching
-                results, cv_name = batch_match_cv_to_jobs(cv_id, num_jobs)
+                results, cv_name = batch_match_cv_to_jobs(cv_path, num_jobs)
                 
                 # Show results
                 if results:

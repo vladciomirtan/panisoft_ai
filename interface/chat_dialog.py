@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
                            QFrame, QScrollArea, QWidget, QTextEdit, QComboBox, QLineEdit,
-                           QMessageBox, QProgressBar)
+                           QMessageBox, QProgressBar, QButtonGroup, QRadioButton)
 from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QPoint, QTimer, QRect
 from PyQt6.QtGui import QFont, QIcon, QTextCursor, QColor, QPalette, QLinearGradient, QBrush, QPainter, QPen
 import os
@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from document_processor import extract_text
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
+from file_uploader import FileUploader, LocalFileUploader, DatasetFileUploader
 
 class AnimatedButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -189,18 +190,17 @@ class ChatDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("CV-Job Analyser")
-        self.setGeometry(100, 100, 1000, 700)
-        self.setMinimumSize(800, 600)
+        self.setWindowState(Qt.WindowState.WindowMaximized)  # Force maximized state
         self.setStyleSheet("""
             QDialog {
                 background: #f5f5f5;
             }
             QComboBox {
-                padding: 8px;
+                padding: 6px;
                 border: 1px solid #e0e0e0;
                 border-radius: 6px;
                 background: white;
-                min-height: 36px;
+                min-height: 32px;
             }
             QComboBox:hover {
                 border-color: #1976d2;
@@ -222,7 +222,7 @@ class ChatDialog(QDialog):
         # Create main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(10)
         
         # Add title with gradient
         title_frame = QFrame()
@@ -230,7 +230,7 @@ class ChatDialog(QDialog):
             QFrame {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1976d2, stop:1 #2196f3);
                 border-radius: 8px;
-                padding: 12px;
+                padding: 8px;
             }
         """)
         title_layout = QVBoxLayout(title_frame)
@@ -281,7 +281,7 @@ class ChatDialog(QDialog):
         
         # Set the container as the scroll area's widget
         self.chat_area.setWidget(self.chat_container)
-        main_layout.addWidget(self.chat_area)
+        main_layout.addWidget(self.chat_area, stretch=3)  # Increased stretch factor for chat area
         
         # Create input area
         input_frame = QFrame()
@@ -290,44 +290,174 @@ class ChatDialog(QDialog):
                 background: white;
                 border-radius: 12px;
                 border: 1px solid #e0e0e0;
-                padding: 16px;
+                padding: 8px;
             }
         """)
-        input_layout = QHBoxLayout(input_frame)
+        input_layout = QVBoxLayout(input_frame)
+        input_layout.setSpacing(6)
         
         # CV selection
+        cv_layout = QHBoxLayout()
+        cv_layout.setSpacing(6)
         cv_label = QLabel("Select CV:")
         cv_label.setFont(QFont('Segoe UI', 11))
         cv_label.setStyleSheet("color: #424242;")
-        input_layout.addWidget(cv_label)
+        cv_layout.addWidget(cv_label)
         
         self.cv_combo = QComboBox()
-        self.cv_combo.setMinimumWidth(250)
-        self.populate_cv_combo()
-        input_layout.addWidget(self.cv_combo)
+        self.cv_combo.setMinimumWidth(200)
+        cv_layout.addWidget(self.cv_combo)
+        
+        # Create CV radio buttons
+        cv_radio_layout = QVBoxLayout()
+        cv_radio_layout.setSpacing(4)
+        cv_radio_label = QLabel("Upload from:")
+        cv_radio_label.setFont(QFont('Segoe UI', 11))
+        cv_radio_label.setStyleSheet("color: #424242;")
+        cv_radio_layout.addWidget(cv_radio_label)
+        
+        self.cv_upload_buttons = QButtonGroup()
+        self.cv_dataset_radio = QRadioButton("DataSet Folder")
+        self.cv_local_radio = QRadioButton("Local Computer")
+        self.cv_upload_buttons.addButton(self.cv_dataset_radio)
+        self.cv_upload_buttons.addButton(self.cv_local_radio)
+        
+        # Set default selection
+        self.cv_dataset_radio.setChecked(True)
+        
+        # Connect signals
+        self.cv_dataset_radio.toggled.connect(self.on_cv_upload_source_changed)
+        self.cv_local_radio.toggled.connect(self.on_cv_upload_source_changed)
+        
+        # Add radio buttons to layout
+        cv_radio_buttons_layout = QHBoxLayout()
+        cv_radio_buttons_layout.setSpacing(6)
+        cv_radio_buttons_layout.addWidget(self.cv_dataset_radio)
+        cv_radio_buttons_layout.addWidget(self.cv_local_radio)
+        cv_radio_layout.addLayout(cv_radio_buttons_layout)
+        
+        cv_layout.addLayout(cv_radio_layout)
+        
+        input_layout.addLayout(cv_layout)
         
         # Job selection
+        job_layout = QHBoxLayout()
+        job_layout.setSpacing(6)
         job_label = QLabel("Select Job:")
         job_label.setFont(QFont('Segoe UI', 11))
         job_label.setStyleSheet("color: #424242;")
-        input_layout.addWidget(job_label)
+        job_layout.addWidget(job_label)
         
         self.job_combo = QComboBox()
-        self.job_combo.setMinimumWidth(250)
+        self.job_combo.setMinimumWidth(200)
+        job_layout.addWidget(self.job_combo)
+        
+        # Create job radio buttons
+        job_radio_layout = QVBoxLayout()
+        job_radio_layout.setSpacing(4)
+        job_radio_label = QLabel("Upload from:")
+        job_radio_label.setFont(QFont('Segoe UI', 11))
+        job_radio_label.setStyleSheet("color: #424242;")
+        job_radio_layout.addWidget(job_radio_label)
+        
+        self.job_upload_buttons = QButtonGroup()
+        self.job_dataset_radio = QRadioButton("DataSet Folder")
+        self.job_local_radio = QRadioButton("Local Computer")
+        self.job_upload_buttons.addButton(self.job_dataset_radio)
+        self.job_upload_buttons.addButton(self.job_local_radio)
+        
+        # Set default selection
+        self.job_dataset_radio.setChecked(True)
+        
+        # Connect signals
+        self.job_dataset_radio.toggled.connect(self.on_job_upload_source_changed)
+        self.job_local_radio.toggled.connect(self.on_job_upload_source_changed)
+        
+        # Add radio buttons to layout
+        job_radio_buttons_layout = QHBoxLayout()
+        job_radio_buttons_layout.setSpacing(6)
+        job_radio_buttons_layout.addWidget(self.job_dataset_radio)
+        job_radio_buttons_layout.addWidget(self.job_local_radio)
+        job_radio_layout.addLayout(job_radio_buttons_layout)
+        
+        job_layout.addLayout(job_radio_layout)
+        
+        input_layout.addLayout(job_layout)
+        
+        # Initialize uploaders
+        self.cv_dataset_uploader = DatasetFileUploader("cv")
+        self.cv_local_uploader = LocalFileUploader()
+        self.job_dataset_uploader = DatasetFileUploader("job_descriptions")
+        self.job_local_uploader = LocalFileUploader()
+        
+        # Add style for radio buttons
+        self.setStyleSheet("""
+            QRadioButton {
+                font-size: 13px;
+                padding: 8px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QRadioButton::indicator:unchecked {
+                border: 2px solid #bdbdbd;
+                border-radius: 9px;
+                background: white;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #1976d2;
+                border-radius: 9px;
+                background: #1976d2;
+            }
+        """)
+        
+        # Populate initial lists
+        self.populate_cv_combo()
         self.populate_job_combo()
-        input_layout.addWidget(self.job_combo)
         
         # Match button
-        match_button = AnimatedButton("Match")
+        match_button = QPushButton("Match")
+        match_button.setFont(QFont('Segoe UI', 11, QFont.Weight.Bold))
+        match_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        match_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1976d2;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 100px;
+                min-height: 32px;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+        """)
         match_button.clicked.connect(self.perform_match)
         input_layout.addWidget(match_button)
         
         main_layout.addWidget(input_frame)
         
         # Add close button
-        close_button = AnimatedButton("Close")
-        close_button.setFixedWidth(120)
-        close_button.clicked.connect(self.accept)
+        close_button = QPushButton("Close")
+        close_button.setFont(QFont('Segoe UI', 11, QFont.Weight.Bold))
+        close_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        close_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 100px;
+                min-height: 32px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+        """)
+        close_button.clicked.connect(self.reject)
         main_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # Center the dialog on the screen
@@ -347,35 +477,35 @@ class ChatDialog(QDialog):
             (screen.height() - size.height()) // 2
         )
     
+    def on_cv_upload_source_changed(self, checked):
+        """Handle CV upload source change."""
+        if checked:
+            self.populate_cv_combo()
+
+    def on_job_upload_source_changed(self, checked):
+        """Handle job upload source change."""
+        if checked:
+            self.populate_job_combo()
+
     def populate_cv_combo(self):
         """Populate the CV combo box with available CVs."""
-        cv_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "DataSet", "cv")
-        cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
+        uploader = self.cv_dataset_uploader if self.cv_dataset_radio.isChecked() else self.cv_local_uploader
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cv_files, cv_display_names = uploader.get_files(base_dir=base_dir)
         
-        for file in cv_files:
-            if file.endswith('.docx') and file.startswith('cv_'):
-                parts = file.split('_')
-                if len(parts) >= 3:
-                    cv_id = parts[1]
-                    name = '_'.join(parts[2:]).replace('.docx', '')
-                    self.cv_combo.addItem(f"ID {cv_id} - {name}", file)
-            else:
-                self.cv_combo.addItem(file, file)
+        self.cv_combo.clear()
+        for file, display_name in cv_display_names.items():
+            self.cv_combo.addItem(display_name, file)
     
     def populate_job_combo(self):
         """Populate the job combo box with available job descriptions."""
-        job_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "DataSet", "job_descriptions")
-        job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
+        uploader = self.job_dataset_uploader if self.job_dataset_radio.isChecked() else self.job_local_uploader
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        job_files, job_display_names = uploader.get_files(base_dir=base_dir)
         
-        for file in job_files:
-            if file.endswith('.docx') and file.startswith('job_description_'):
-                parts = file.split('_')
-                if len(parts) >= 4:
-                    job_id = parts[2]
-                    title = '_'.join(parts[3:]).replace('.docx', '')
-                    self.job_combo.addItem(f"ID {job_id} - {title}", file)
-            else:
-                self.job_combo.addItem(file, file)
+        self.job_combo.clear()
+        for file, display_name in job_display_names.items():
+            self.job_combo.addItem(display_name, file)
     
     def add_message(self, message, is_user=False):
         """Add a message to the chat area."""

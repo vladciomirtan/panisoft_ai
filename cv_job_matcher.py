@@ -59,12 +59,12 @@ def get_cv_files(cv_id=None, base_dir=None):
     
     return cv_files, cv_display_names
 
-def batch_match_cv_to_jobs(cv_identifier, num_jobs=20, top_matches=5, max_retries=3):
+def batch_match_cv_to_jobs(cv_path, num_jobs=20, top_matches=5, max_retries=3):
     """
     Compare a specific CV with multiple job descriptions and return the top matches.
     
     Args:
-        cv_identifier (str): ID or filename of the CV to match against jobs
+        cv_path (str): Path to the CV file to match against jobs
         num_jobs (int): Number of job descriptions to process (default: 20)
         top_matches (int): Number of top matches to return (default: 5)
         max_retries (int): Maximum number of retries for API calls
@@ -82,22 +82,19 @@ def batch_match_cv_to_jobs(cv_identifier, num_jobs=20, top_matches=5, max_retrie
     
     # Get paths to directories
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    cv_dir = os.path.join(base_dir, "DataSet", "cv")
-    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions")    
-    # Get CV files matching the identifier
-    cv_files, cv_display_names = get_cv_files(cv_identifier)
+    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions")
     
-    if not cv_files:
-        print(f"No CV found with identifier '{cv_identifier}'.")
-        return []
-    
-    # Use the first matching CV file
-    cv_file = cv_files[0]
-    cv_path = os.path.abspath(os.path.join(cv_dir, cv_file))
+    # Extract CV content
     cv_content = extract_text(cv_path)
     
     # Get display name for the CV
-    cv_name = cv_display_names.get(cv_file, cv_file.replace('.pdf', '').replace('.docx', ''))
+    cv_name = os.path.basename(cv_path)
+    if cv_name.endswith('.docx') and cv_name.startswith('cv_'):
+        parts = cv_name.split('_')
+        if len(parts) >= 3:
+            cv_id = parts[1]
+            name = '_'.join(parts[2:]).replace('.docx', '')
+            cv_name = f"ID {cv_id} - {name}"
     
     # Load job descriptions
     job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]

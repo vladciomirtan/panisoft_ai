@@ -1,21 +1,39 @@
 import os
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QSpinBox, QPushButton,
-    QListWidget, QFrame, QGraphicsDropShadowEffect
+    QListWidget, QFrame, QGraphicsDropShadowEffect, QRadioButton, QButtonGroup, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from cv_job_matcher import get_cv_files
+from file_uploader import FileUploader, LocalFileUploader, DatasetFileUploader
 
 class CVSelectionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select a CV")
-        self.setFixedSize(500, 650)
+        self.setFixedSize(500, 750)  # Increased height from 650 to 750
         self.setStyleSheet("""
             QDialog {
                 background: #f6f8fa;
+            }
+            QRadioButton {
+                font-size: 13px;
+                padding: 8px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QRadioButton::indicator:unchecked {
+                border: 2px solid #bdbdbd;
+                border-radius: 9px;
+                background: white;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #1976d2;
+                border-radius: 9px;
+                background: #1976d2;
             }
         """)
 
@@ -43,6 +61,34 @@ class CVSelectionDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setFont(QFont('Segoe UI', 20, QFont.Weight.Bold))
         card_layout.addWidget(title)
+
+        # Upload source selection
+        upload_layout = QVBoxLayout()
+        upload_label = QLabel("Upload from:")
+        upload_label.setFont(QFont('Segoe UI', 11))
+        upload_layout.addWidget(upload_label)
+        
+        # Create radio buttons
+        self.upload_buttons = QButtonGroup()
+        self.dataset_radio = QRadioButton("DataSet Folder")
+        self.local_radio = QRadioButton("Local Computer")
+        self.upload_buttons.addButton(self.dataset_radio)
+        self.upload_buttons.addButton(self.local_radio)
+        
+        # Set default selection
+        self.dataset_radio.setChecked(True)
+        
+        # Connect signals
+        self.dataset_radio.toggled.connect(self.on_upload_source_changed)
+        self.local_radio.toggled.connect(self.on_upload_source_changed)
+        
+        # Add radio buttons to layout
+        radio_layout = QHBoxLayout()
+        radio_layout.addWidget(self.dataset_radio)
+        radio_layout.addWidget(self.local_radio)
+        upload_layout.addLayout(radio_layout)
+        
+        card_layout.addLayout(upload_layout)
 
         # Search section
         search_layout = QHBoxLayout()
@@ -110,16 +156,17 @@ class CVSelectionDialog(QDialog):
 
         # Select button
         select_button = QPushButton("Select CV")
-        select_button.setFont(QFont('Segoe UI', 14, QFont.Weight.Bold))
+        select_button.setFont(QFont('Segoe UI', 11, QFont.Weight.Bold))
         select_button.setCursor(Qt.CursorShape.PointingHandCursor)
         select_button.setStyleSheet("""
             QPushButton {
                 background-color: #1976d2;
                 color: white;
                 border: none;
-                border-radius: 8px;
-                padding: 12px 0;
-                margin-top: 10px;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 100px;
+                min-height: 32px;
             }
             QPushButton:hover {
                 background-color: #1565c0;
@@ -134,28 +181,72 @@ class CVSelectionDialog(QDialog):
         main_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addStretch()
 
+        # Initialize uploaders
+        self.dataset_uploader = DatasetFileUploader("cv")
+        self.local_uploader = LocalFileUploader()
+        
         # Add CVs to the list
         self.load_cvs()
         self.cv_list.itemDoubleClicked.connect(self.accept)
 
+    def on_upload_source_changed(self, checked):
+        """Handle upload source change."""
+        if checked:
+            self.load_cvs()
+
     def load_cvs(self):
+        """Load CVs using the selected uploader."""
+        uploader = self.dataset_uploader if self.dataset_radio.isChecked() else self.local_uploader
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cv_files, cv_display_names = get_cv_files(base_dir=parent_dir)
+        cv_files, cv_display_names = uploader.get_files(base_dir=parent_dir)
         self.cv_list.clear()
+        
+        # Store file paths for later use
+        self.file_paths = {}
+        
         for cv_file, display_name in cv_display_names.items():
-            self.cv_list.addItem(display_name)
+            item = QListWidgetItem(display_name)
+            # Store the full path as data
+            if isinstance(uploader, LocalFileUploader):
+                # For local files, use the full path directly
+                item.setData(Qt.ItemDataRole.UserRole, cv_file)
+            else:
+                # For dataset files, construct the path
+                item.setData(Qt.ItemDataRole.UserRole, os.path.join(parent_dir, "DataSet", "cv", cv_file))
+            self.cv_list.addItem(item)
+            self.file_paths[display_name] = item.data(Qt.ItemDataRole.UserRole)
 
     def filter_cvs(self):
+        """Filter CVs based on search text."""
         search_text = self.search_input.text().lower()
+        uploader = self.dataset_uploader if self.dataset_radio.isChecked() else self.local_uploader
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cv_files, cv_display_names = get_cv_files(base_dir=parent_dir)
+        cv_files, cv_display_names = uploader.get_files(base_dir=parent_dir)
         self.cv_list.clear()
+        
+        # Store file paths for later use
+        self.file_paths = {}
+        
         for cv_file, display_name in cv_display_names.items():
             if search_text in display_name.lower():
-                self.cv_list.addItem(display_name)
+                item = QListWidgetItem(display_name)
+                # Store the full path as data
+                if isinstance(uploader, LocalFileUploader):
+                    # For local files, use the full path directly
+                    item.setData(Qt.ItemDataRole.UserRole, cv_file)
+                else:
+                    # For dataset files, construct the path
+                    item.setData(Qt.ItemDataRole.UserRole, os.path.join(parent_dir, "DataSet", "cv", cv_file))
+                self.cv_list.addItem(item)
+                self.file_paths[display_name] = item.data(Qt.ItemDataRole.UserRole)
 
     def get_selected_cv(self):
+        """Get the selected CV."""
         selected_item = self.cv_list.currentItem()
         if selected_item:
-            return selected_item.text()
+            # Return both the display name and the file path
+            return {
+                'display_name': selected_item.text(),
+                'file_path': selected_item.data(Qt.ItemDataRole.UserRole)
+            }
         return None
