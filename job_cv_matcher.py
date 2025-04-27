@@ -5,18 +5,21 @@ from document_processor import extract_text, load_job_descriptions, load_cvs
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
 
-def get_job_files(job_id=None):
+def get_job_files(job_id=None, base_dir=None):
     """
     Get job description files from the directory, optionally filtering by ID.
     
     Args:
         job_id (str, optional): ID of the job to filter by
+        base_dir (str, optional): Base directory path
         
     Returns:
         list: List of job files
         dict: Dictionary mapping file names to display names
     """
-    job_dir = "DataSet/job_descriptions"
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    job_dir = os.path.join(base_dir, "DataSet", "job_descriptions")
     job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
     job_display_names = {}
     
@@ -57,7 +60,7 @@ def get_job_files(job_id=None):
     
     return job_files, job_display_names
 
-def get_cv_files():
+def get_cv_files(base_dir=None):
     """
     Get CV files from the directory.
     
@@ -65,7 +68,9 @@ def get_cv_files():
         list: List of CV files
         dict: Dictionary mapping file names to display names
     """
-    cv_dir = "DataSet/cv"
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
     cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
     cv_display_names = {}
     
@@ -95,19 +100,18 @@ def get_cv_files():
     
     return cv_files, cv_display_names
 
-def batch_match_job_to_cvs(job_identifier, num_cvs=20, top_matches=5, max_retries=3):
+def batch_match_job_to_cvs(job_path, num_cvs=20, top_matches=5, max_retries=3):
     """
     Compare a specific job description with multiple CVs and return the top matches.
     
     Args:
-        job_identifier (str): ID or filename of the job description to match against
+        job_path (str): Path to the job description file to match against
         num_cvs (int): Number of CVs to process (default: 20)
         top_matches (int): Number of top matches to return (default: 5)
         max_retries (int): Maximum number of retries for API calls
     
     Returns:
         list: Top matches sorted by score (highest first)
-        str: Display name of the job
     """
     # Check if Gemini API key is provided
     if not GEMINI_API_KEY:
@@ -118,26 +122,23 @@ def batch_match_job_to_cvs(job_identifier, num_cvs=20, top_matches=5, max_retrie
     print(f"Using Gemini API")
     
     # Get paths to directories
-    cv_dir = "DataSet/cv"
-    job_dir = "DataSet/job_descriptions"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cv_dir = os.path.join(base_dir, "DataSet", "cv")
     
-    # Get job files matching the identifier
-    job_files, job_display_names = get_job_files(job_identifier)
-    
-    if not job_files:
-        print(f"No job found with identifier '{job_identifier}'.")
-        return [], ""
-    
-    # Use the first matching job file
-    job_file = job_files[0]
-    job_path = os.path.join(job_dir, job_file)
+    # Extract job content
     job_content = extract_text(job_path)
     
     # Get display name for the job
-    job_name = job_display_names.get(job_file, job_file.replace('.pdf', '').replace('.docx', ''))
+    job_name = os.path.basename(job_path)
+    if job_name.endswith('.docx') and job_name.startswith('job_description_'):
+        parts = job_name.split('_')
+        if len(parts) >= 4:
+            job_id = parts[2]
+            title = '_'.join(parts[3:]).replace('.docx', '')
+            job_name = f"ID {job_id} - {title}"
     
     # Load CVs
-    cv_files, cv_display_names = get_cv_files()
+    cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
     
     # Limit to the specified number of CVs
     if num_cvs < len(cv_files):
@@ -159,7 +160,13 @@ def batch_match_job_to_cvs(job_identifier, num_cvs=20, top_matches=5, max_retrie
         while retry_count < max_retries and not success:
             try:
                 # Get CV display name
-                cv_name = cv_display_names.get(cv_file, cv_file.replace('.pdf', '').replace('.docx', ''))
+                cv_name = cv_file
+                if cv_file.endswith('.docx') and cv_file.startswith('cv_'):
+                    parts = cv_file.split('_')
+                    if len(parts) >= 3:
+                        cv_id = parts[1]
+                        name = '_'.join(parts[2:]).replace('.docx', '')
+                        cv_name = f"ID {cv_id} - {name}"
                 
                 # If it's a standard CV file, extract ID
                 if cv_file.endswith('.docx') and cv_file.startswith('cv_') and len(cv_file.split('_')) >= 3:
@@ -201,7 +208,7 @@ def batch_match_job_to_cvs(job_identifier, num_cvs=20, top_matches=5, max_retrie
                 else:
                     print(f"Failed to process CV {cv_file} after {max_retries} attempts. Skipping.")
                     # Add a placeholder result to ensure we have data for reporting
-                    cv_name = cv_display_names.get(cv_file, cv_file.replace('.pdf', '').replace('.docx', ''))
+                    cv_name = cv_file
                     if cv_file.endswith('.docx') and cv_file.startswith('cv_') and len(cv_file.split('_')) >= 3:
                         cv_id = cv_file.split('_')[1]
                     else:
