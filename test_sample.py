@@ -1,7 +1,7 @@
 import os
 import sys
 import random
-from document_processor import extract_text_from_docx
+from document_processor import extract_text
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
 
@@ -41,8 +41,8 @@ def test_sample(cv_index=None, job_index=None):
     print(f"Using Job: {sample_job_path}")
     
     # Extract text
-    cv_content = extract_text_from_docx(sample_cv_path)
-    job_content = extract_text_from_docx(sample_job_path)
+    cv_content = extract_text(sample_cv_path)
+    job_content = extract_text(sample_job_path)
     
     # Initialize matcher
     matcher = CVJobMatcher()

@@ -1,3 +1,53 @@
-./config.py
-./.dist
-/.env
+# Config and environment files
+config.py
+.env
+.dist
+*.env
+
+# Output files
+/output/
+*.xlsx
+*.txt
+cv_job_matching_results.xlsx
+matching_results.txt
+
+# Dataset (comment this out if you want to include the dataset in your repo)
+/DataSet/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

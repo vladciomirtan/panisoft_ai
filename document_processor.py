@@ -1,58 +1,114 @@
 import os
 import docx
-from typing import Dict, List, Tuple
+from typing import List, Dict, Optional, Any
+import re
+import fitz  # PyMuPDF for PDF processing
 from config import CV_DIR, JOB_DESCRIPTIONS_DIR
+
+def extract_text(file_path: str) -> str:
+    """
+    Extract text from a document file.
+
+    Args:
+        file_path (str): Path to the document file (.docx or .pdf)
+
+    Returns:
+        str: Extracted text
+    """
+    if file_path.lower().endswith('.docx'):
+        return extract_text_from_docx(file_path)
+    elif file_path.lower().endswith('.pdf'):
+        return extract_text_from_pdf(file_path)
+    else:
+        raise ValueError(f"Unsupported file format: {file_path}")
 
 def extract_text_from_docx(file_path: str) -> str:
     """
     Extract text from a .docx file.
-    
+
     Args:
         file_path (str): Path to the .docx file
-        
+
     Returns:
-        str: Extracted text from the document
+        str: Extracted text
     """
     try:
         doc = docx.Document(file_path)
-        full_text = []
-        for para in doc.paragraphs:
-            full_text.append(para.text)
-        return '\n'.join(full_text)
+        return "\n".join([para.text for para in doc.paragraphs])
     except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+        print(f"Error extracting text from {file_path}: {e}")
         return ""
 
-def load_cvs() -> Dict[str, str]:
+def extract_text_from_pdf(file_path: str) -> str:
     """
-    Load all CVs from the CV directory.
-    
+    Extract text from a PDF file using PyMuPDF (fitz).
+
+    Args:
+        file_path (str): Path to the PDF file
+
+    Returns:
+        str: Extracted text
+    """
+    try:
+        text = ""
+        with fitz.open(file_path) as doc:
+            for page in doc:
+                text += page.get_text()
+        return text
+    except Exception as e:
+        print(f"Error extracting text from PDF {file_path}: {e}")
+        return ""
+
+def load_cvs(directory: str) -> Dict[str, str]:
+    """
+    Load CVs from a directory.
+
+    Args:
+        directory (str): Directory containing CV files
+
     Returns:
         Dict[str, str]: Dictionary mapping CV IDs to their content
     """
     cvs = {}
-    for filename in os.listdir(CV_DIR):
-        if filename.endswith('.docx'):
-            cv_id = filename.split('_')[1]  # Extract ID number
-            name = '_'.join(filename.split('_')[2:]).replace('.docx', '')  # Extract name
-            file_path = os.path.join(CV_DIR, filename)
-            content = extract_text_from_docx(file_path)
-            cvs[f"{cv_id}_{name}"] = content
+    for filename in os.listdir(directory):
+        if filename.endswith(('.docx', '.pdf')):
+            file_path = os.path.join(directory, filename)
+            
+            # Extract ID from filename (assuming naming convention like cv_1.docx or 1.pdf)
+            if filename.startswith('cv_') and filename.endswith('.docx'):
+                cv_id = filename.replace('cv_', '').replace('.docx', '')
+            elif filename.endswith('.pdf'):
+                # For PDF files without ID in filename, use the filename without extension
+                cv_id = filename.replace('.pdf', '')
+            else:
+                cv_id = filename.replace('.docx', '')
+                
+            cvs[cv_id] = extract_text(file_path)
     return cvs
 
-def load_job_descriptions() -> Dict[str, str]:
+def load_job_descriptions(directory: str) -> Dict[str, str]:
     """
-    Load all job descriptions from the job descriptions directory.
-    
+    Load job descriptions from a directory.
+
+    Args:
+        directory (str): Directory containing job description files
+
     Returns:
-        Dict[str, str]: Dictionary mapping job description IDs to their content
+        Dict[str, str]: Dictionary mapping job IDs to their descriptions
     """
-    job_descriptions = {}
-    for filename in os.listdir(JOB_DESCRIPTIONS_DIR):
-        if filename.endswith('.docx'):
-            job_id = filename.split('_')[2]  # Extract ID number
-            job_title = '_'.join(filename.split('_')[3:]).replace('.docx', '')  # Extract job title
-            file_path = os.path.join(JOB_DESCRIPTIONS_DIR, filename)
-            content = extract_text_from_docx(file_path)
-            job_descriptions[f"{job_id}_{job_title}"] = content
-    return job_descriptions 
+    jobs = {}
+    for filename in os.listdir(directory):
+        if filename.endswith(('.docx', '.pdf')):
+            file_path = os.path.join(directory, filename)
+            
+            # Extract ID from filename
+            if filename.startswith('job_description_') and filename.endswith('.docx'):
+                job_id = filename.replace('job_description_', '').replace('.docx', '')
+            elif filename.endswith('.pdf'):
+                # For PDF files, use the filename without extension
+                job_id = filename.replace('.pdf', '')
+            else:
+                job_id = filename.replace('.docx', '')
+                
+            jobs[job_id] = extract_text(file_path)
+    return jobs 
