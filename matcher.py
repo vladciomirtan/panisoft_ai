@@ -49,12 +49,60 @@ class CVJobMatcher:
         
         You should evaluate based on three key criteria:
         1. Industry Knowledge (10%): Assess the candidate's experience in the specific industry relevant to the job.
-        2. Technical Skills (30%): Evaluate the candidate's technical skills and qualifications against the job requirements.
-        3. Overall Job Description Match (60%): Measure the overall alignment between the job description and the candidate's qualifications.
+           - Years of experience in the industry (weighted by relevance)
+           - Industry-specific certifications and qualifications
+           - Industry-specific achievements and projects
+           - Knowledge of industry standards, regulations, and best practices
+           - Network and connections in the industry
         
-        For each criterion, assign a score between 0 and 1, where 0 means no match and 1 means perfect match.
+        2. Technical Skills (30%): Evaluate the candidate's technical skills and qualifications against the job requirements.
+           - Required technical skills listed in the job description
+           - Proficiency levels in each skill (expert, advanced, proficient, intermediate, basic)
+           - Years of experience with each skill
+           - Relevant technical certifications and training
+           - Technical projects and achievements
+           - Ability to learn new technologies
+        
+        3. Overall Job Description Match (60%): Measure the overall alignment between the job description and the candidate's qualifications.
+           - Education level and field of study
+           - Total years of relevant experience
+           - Key responsibilities alignment
+           - Soft skills and personality traits
+           - Location and work arrangement compatibility
+           - Career progression and stability
+           - Cultural fit with the organization
+        
+        For each criterion, assign a score between 0 and 1, where:
+        - 0.9-1.0: Exceptional match (exceeds requirements)
+        - 0.7-0.8: Strong match (meets all key requirements)
+        - 0.5-0.6: Good match (meets most requirements)
+        - 0.3-0.4: Fair match (meets some requirements)
+        - 0.0-0.2: Poor match (does not meet key requirements)
+        
+        Consider the following when scoring:
+        1. Experience Level Matching:
+           - Junior roles: Focus on potential and learning ability
+           - Mid-level roles: Balance of experience and growth potential
+           - Senior roles: Strong track record and leadership
+           - Executive roles: Strategic vision and industry impact
+        
+        2. Skill Weighting:
+           - Required skills: Must have, heavily weighted
+           - Preferred skills: Nice to have, moderately weighted
+           - Bonus skills: Additional value, lightly weighted
+        
+        3. Context Analysis:
+           - Consider the candidate's career progression
+           - Evaluate the relevance of past experiences
+           - Assess the transferability of skills
+           - Consider industry trends and future needs
+        
         Calculate the weighted total score using the weights mentioned above.
-        Provide detailed reasoning for your scores.
+        Provide detailed reasoning for your scores, explaining:
+        - Key strengths that make the candidate a good fit
+        - Areas where the candidate meets or exceeds requirements
+        - Any gaps or areas for development
+        - Potential for growth and adaptation
         
         Format your response as follows:
         INDUSTRY_KNOWLEDGE_SCORE: [score between 0 and 1]

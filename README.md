@@ -20,7 +20,7 @@ This project uses AI to match CVs with job descriptions based on multiple criter
 
 ## Setup
 
-1. Install the required dependencies:
+1. Inside the project folder, install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
@@ -37,8 +37,17 @@ This project uses AI to match CVs with job descriptions based on multiple criter
    └── job_descriptions/ (contains job description .docx files)
    ```
 
-## Usage
-
+# Usage
+## Grapical Interface
+To enter the graphical interface, first change the current directory to `panisoft_ai\interface`. Your parent directory may differ, so take that into consideration:
+```
+cd D:\Documents\panisoft_ai\interface
+```
+Run the application `app.py`:
+```
+python app.py
+```
+## Command line tools
 ### Full Batch Processing
 Run the main application to process all CVs against all job descriptions:
 ```
