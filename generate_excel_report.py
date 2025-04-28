@@ -10,12 +10,13 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from matching_algorithm import match_cv_to_job_description
 
-def generate_excel_report(sample_size=None):
+def generate_excel_report(cv_sample_size=None, job_sample_size=None):
     """
     Generate an Excel report of CV-Job matches.
     
     Args:
-        sample_size (int, optional): Number of CVs and jobs to use (for testing with smaller dataset)
+        cv_sample_size (int, optional): Number of CVs to use (for testing with smaller dataset)
+        job_sample_size (int, optional): Number of jobs to use (for testing with smaller dataset)
     """
     try:
         # Check if API key is provided
@@ -30,20 +31,25 @@ def generate_excel_report(sample_size=None):
         print("Generating Excel Report for CV-Job Matching")
         print("=" * 80)
         
+        # Get the project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
         # Get paths to sample files
-        cv_dir = "DataSet/cv"
-        job_dir = "DataSet/job_descriptions"
+        cv_dir = os.path.join(project_root, "panisoft_ai", "DataSet", "cv")
+        job_dir = os.path.join(project_root, "panisoft_ai", "DataSet", "job_descriptions")
         
         # Load the CVs and job descriptions
         print("Loading CVs and job descriptions...")
         cv_files = [f for f in os.listdir(cv_dir) if f.endswith(('.docx', '.pdf'))]
         job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
         
-        # If sample size is specified, limit the number of files
-        if sample_size:
-            print(f"Using sample size: {sample_size} CVs and job descriptions")
-            cv_files = cv_files[:sample_size]
-            job_files = job_files[:sample_size]
+        # If sample sizes are specified, limit the number of files
+        if cv_sample_size:
+            print(f"Using sample size: {cv_sample_size} CVs")
+            cv_files = cv_files[:cv_sample_size]
+        if job_sample_size:
+            print(f"Using sample size: {job_sample_size} job descriptions")
+            job_files = job_files[:job_sample_size]
         
         # Initialize matcher
         matcher = CVJobMatcher()
@@ -117,14 +123,17 @@ def generate_excel_report(sample_size=None):
         df['Total_Score_Pct'] = df['Total_Score'] * 100
         
         # Create output directory if it doesn't exist
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        output_dir = os.path.join(project_root, OUTPUT_DIR)
+        os.makedirs(output_dir, exist_ok=True)
         
         # Create Excel file
-        excel_file = os.path.join(OUTPUT_DIR, "cv_job_matching_results.xlsx")
+        excel_file = os.path.join(output_dir, "cv_job_matching_results.xlsx")
         print(f"\nSaving results to {excel_file}...")
         
         # Create a Pandas Excel writer
-        with pd.ExcelWriter(excel_file, engine='openpyxl', mode='w') as writer:
+        writer = pd.ExcelWriter(excel_file, engine='openpyxl')
+        
+        try:
             # Write the main results sheet
             df.to_excel(writer, sheet_name='All_Matches', index=False)
             
@@ -147,7 +156,10 @@ def generate_excel_report(sample_size=None):
                 top_cvs_per_job = pd.concat([top_cvs_per_job, job_data])
             top_cvs_per_job.to_excel(writer, sheet_name='Top5_CVs_Per_Job', index=False)
             
-            # Ensure workbook is saved and closed
+            # Save the workbook
+            writer._save()
+        finally:
+            # Ensure writer is closed
             writer.close()
         
         # Clean up large variables to free memory
@@ -161,6 +173,9 @@ def generate_excel_report(sample_size=None):
         print("4. Top5_CVs_Per_Job: The top 5 CVs for each job")
         print("\nScores are provided in both decimal (0-1) and percentage (0-100%) formats.")
         print("Process completed successfully!")
+    except Exception as e:
+        print(f"Error generating Excel report: {str(e)}")
+        raise
     finally:
         # Force garbage collection to clean up resources
         gc.collect()
@@ -286,12 +301,17 @@ def generate_excel_report_from_processed_data():
 
 if __name__ == "__main__":
     try:
-        # Check if a sample size is provided as command line argument
-        sample_size = None
-        if len(sys.argv) > 1 and sys.argv[1].isdigit():
-            sample_size = int(sys.argv[1])
+        # Check if sample sizes are provided as command line arguments
+        cv_sample_size = None
+        job_sample_size = None
         
-        generate_excel_report(sample_size)
+        if len(sys.argv) > 1:
+            if sys.argv[1].isdigit():
+                cv_sample_size = int(sys.argv[1])
+            if len(sys.argv) > 2 and sys.argv[2].isdigit():
+                job_sample_size = int(sys.argv[2])
+        
+        generate_excel_report(cv_sample_size, job_sample_size)
         generate_excel_report_from_processed_data()
     finally:
         # One final garbage collection to ensure all resources are freed
