@@ -5,6 +5,10 @@ import re
 import fitz  # PyMuPDF for PDF processing
 from config import CV_DIR, JOB_DESCRIPTIONS_DIR
 
+def get_base_dir():
+    """Get the base directory of the project."""
+    return os.path.dirname(os.path.abspath(__file__))
+
 def extract_text(file_path: str) -> str:
     """
     Extract text from a document file.
@@ -15,6 +19,18 @@ def extract_text(file_path: str) -> str:
     Returns:
         str: Extracted text
     """
+    # If the path is relative, make it absolute and include DataSet/cv/ directory
+    if not os.path.isabs(file_path):
+        base_dir = get_base_dir()
+        # If the file is a CV, add DataSet/cv/ to the path
+        if file_path.startswith('cv_'):
+            file_path = os.path.join(base_dir, "DataSet", "cv", file_path)
+        # If the file is a job description, add DataSet/job_descriptions/ to the path
+        elif file_path.startswith('job_description_'):
+            file_path = os.path.join(base_dir, "DataSet", "job_descriptions", file_path)
+        else:
+            file_path = os.path.join(base_dir, file_path)
+    
     if file_path.lower().endswith('.docx'):
         return extract_text_from_docx(file_path)
     elif file_path.lower().endswith('.pdf'):
@@ -69,6 +85,11 @@ def load_cvs(directory: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: Dictionary mapping CV IDs to their content
     """
+    # If the directory is relative, make it absolute and include DataSet/cv/ directory
+    if not os.path.isabs(directory):
+        base_dir = get_base_dir()
+        directory = os.path.join(base_dir, "DataSet", "cv")
+    
     cvs = {}
     for filename in os.listdir(directory):
         if filename.endswith(('.docx', '.pdf')):
@@ -96,6 +117,11 @@ def load_job_descriptions(directory: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: Dictionary mapping job IDs to their descriptions
     """
+    # If the directory is relative, make it absolute and include DataSet/job_descriptions/ directory
+    if not os.path.isabs(directory):
+        base_dir = get_base_dir()
+        directory = os.path.join(base_dir, "DataSet", "job_descriptions")
+    
     jobs = {}
     for filename in os.listdir(directory):
         if filename.endswith(('.docx', '.pdf')):

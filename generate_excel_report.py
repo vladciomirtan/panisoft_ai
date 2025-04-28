@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 import gc
+import time
 from tqdm import tqdm
 from document_processor import extract_text, load_cvs, load_job_descriptions
 from matcher import CVJobMatcher
@@ -18,6 +19,7 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         cv_sample_size (int, optional): Number of CVs to use (for testing with smaller dataset)
         job_sample_size (int, optional): Number of jobs to use (for testing with smaller dataset)
     """
+    start_time = time.time()
     try:
         # Check if API key is provided
         if not GEMINI_API_KEY:
@@ -44,18 +46,20 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         job_files = [f for f in os.listdir(job_dir) if f.endswith(('.docx', '.pdf'))]
         
         # If sample sizes are specified, limit the number of files
-        if cv_sample_size:
+        if cv_sample_size is not None:
             print(f"Using sample size: {cv_sample_size} CVs")
             cv_files = cv_files[:cv_sample_size]
-        if job_sample_size:
+        if job_sample_size is not None:
             print(f"Using sample size: {job_sample_size} job descriptions")
             job_files = job_files[:job_sample_size]
+        
+        print(f"Total CV files to process: {len(cv_files)}")
+        print(f"Total job files to process: {len(job_files)}")
         
         # Initialize matcher
         matcher = CVJobMatcher()
         
         # Create a DataFrame to store the results
-        # Headers: CV, Job, Industry Score, Technical Score, Match Score, Total Score, Reasoning
         results = []
         
         # Create a lookup to convert file names to more readable names
@@ -82,17 +86,35 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         # Create progress bar
         progress = tqdm(total=total_matches, desc="Matching CVs with Jobs")
         
+        # Track API calls for rate limiting
+        api_call_count = 0
+        
         # For each CV and job description, calculate the match
         for job_file in job_files:
             job_path = os.path.join(job_dir, job_file)
             job_content = extract_text(job_path)
             
             for cv_file in cv_files:
+                # Check if we need to pause for rate limiting (after 15 API calls)
+                if api_call_count >= 15:
+                    print("\n=== RATE LIMIT REACHED ===")
+                    print("Pausing for 60 seconds to avoid API rate limiting...")
+                    for remaining in range(60, 0, -1):
+                        sys.stdout.write(f"\rResuming in {remaining} seconds...")
+                        sys.stdout.flush()
+                        time.sleep(1)
+                    print("\nResuming processing...")
+                    # Reset the counter after the pause
+                    api_call_count = 0
+                
                 cv_path = os.path.join(cv_dir, cv_file)
                 cv_content = extract_text(cv_path)
                 
                 # Match CV with job description
                 result = matcher.match(cv_content, job_content)
+                
+                # Increment API call counter after successful call
+                api_call_count += 1
                 
                 # Store the result
                 results.append({
@@ -113,8 +135,11 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         # Close progress bar
         progress.close()
         
+        print(f"Total results collected: {len(results)}")
+        
         # Convert to DataFrame
         df = pd.DataFrame(results)
+        print(f"DataFrame created with {len(df)} rows")
         
         # Add percentage columns for easier reading
         df['Industry_Score_Pct'] = df['Industry_Score'] * 100
@@ -123,7 +148,7 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         df['Total_Score_Pct'] = df['Total_Score'] * 100
         
         # Create output directory if it doesn't exist
-        output_dir = os.path.join(project_root, OUTPUT_DIR)
+        output_dir = os.path.join(project_root, "panisoft_ai", "output")
         os.makedirs(output_dir, exist_ok=True)
         
         # Create Excel file
@@ -136,11 +161,13 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         try:
             # Write the main results sheet
             df.to_excel(writer, sheet_name='All_Matches', index=False)
+            print(f"Wrote {len(df)} rows to All_Matches sheet")
             
             # Create a sheet with the best CV for each job
             best_matches = df.loc[df.groupby('Job')['Total_Score'].idxmax()]
             best_matches = best_matches.sort_values('Total_Score', ascending=False)
             best_matches.to_excel(writer, sheet_name='Best_Match_Per_Job', index=False)
+            print(f"Wrote {len(best_matches)} rows to Best_Match_Per_Job sheet")
             
             # Create a sheet with the top 5 jobs for each CV
             top_jobs_per_cv = pd.DataFrame()
@@ -148,6 +175,7 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
                 cv_data = df[df['CV'] == cv].sort_values('Total_Score', ascending=False).head(5)
                 top_jobs_per_cv = pd.concat([top_jobs_per_cv, cv_data])
             top_jobs_per_cv.to_excel(writer, sheet_name='Top5_Jobs_Per_CV', index=False)
+            print(f"Wrote {len(top_jobs_per_cv)} rows to Top5_Jobs_Per_CV sheet")
             
             # Create a sheet with the top 5 CVs for each job
             top_cvs_per_job = pd.DataFrame()
@@ -155,6 +183,7 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
                 job_data = df[df['Job'] == job].sort_values('Total_Score', ascending=False).head(5)
                 top_cvs_per_job = pd.concat([top_cvs_per_job, job_data])
             top_cvs_per_job.to_excel(writer, sheet_name='Top5_CVs_Per_Job', index=False)
+            print(f"Wrote {len(top_cvs_per_job)} rows to Top5_CVs_Per_Job sheet")
             
             # Save the workbook
             writer._save()
@@ -172,6 +201,13 @@ def generate_excel_report(cv_sample_size=None, job_sample_size=None):
         print("3. Top5_Jobs_Per_CV: The top 5 jobs for each CV")
         print("4. Top5_CVs_Per_Job: The top 5 CVs for each job")
         print("\nScores are provided in both decimal (0-1) and percentage (0-100%) formats.")
+        
+        # Calculate and display total execution time
+        end_time = time.time()
+        total_time = end_time - start_time
+        hours, remainder = divmod(total_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        print(f"\nTotal execution time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
         print("Process completed successfully!")
     except Exception as e:
         print(f"Error generating Excel report: {str(e)}")
@@ -194,7 +230,7 @@ def generate_excel_report_from_processed_data():
         for cv_file in cv_files:
             # Create readable name for CV
             if cv_file.endswith('.docx'):
-                cv_name = '_'.join(cv_file.split('_')[2:]).replace('.docx', '')
+                cv_name = ''.join(cv_file.split('')[2:]).replace('.docx', '')
                 cv_id = cv_file.split('_')[1]
             elif cv_file.endswith('.pdf'):
                 # For PDF files, handle name extraction differently
@@ -213,7 +249,7 @@ def generate_excel_report_from_processed_data():
             for job_file in job_files:
                 # Create readable name for job description
                 if job_file.endswith('.docx'):
-                    job_title = '_'.join(job_file.split('_')[3:]).replace('.docx', '')
+                    job_title = ''.join(job_file.split('')[3:]).replace('.docx', '')
                     job_id = job_file.split('_')[2]
                 elif job_file.endswith('.pdf'):
                     # For PDF files, handle job title extraction differently
@@ -284,10 +320,11 @@ def generate_excel_report_from_processed_data():
             ws.column_dimensions[column_name].width = adjusted_width
         
         # Create output directory if it doesn't exist
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        output_dir = os.path.join(project_root, "panisoft_ai", "output")
+        os.makedirs(output_dir, exist_ok=True)
         
         # Save workbook
-        output_path = os.path.join(OUTPUT_DIR, "matching_results.xlsx")
+        output_path = os.path.join(output_dir, "matching_results.xlsx")
         wb.save(output_path)
         wb.close()  # Explicitly close the workbook
         
@@ -299,7 +336,7 @@ def generate_excel_report_from_processed_data():
         # Force garbage collection to clean up resources
         gc.collect()
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     try:
         # Check if sample sizes are provided as command line arguments
         cv_sample_size = None
@@ -317,4 +354,4 @@ if __name__ == "__main__":
         # One final garbage collection to ensure all resources are freed
         gc.collect()
         # Exit explicitly
-        sys.exit(0) 
+        sys.exit(0)

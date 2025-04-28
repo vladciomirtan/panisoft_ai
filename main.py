@@ -1,11 +1,13 @@
 import os
 import sys
 import gc
+import time
 from document_processor import load_cvs, load_job_descriptions
 from matcher import CVJobMatcher, format_top_matches
 from config import GEMINI_API_KEY, OUTPUT_DIR, CV_DIR, JOB_DESCRIPTIONS_DIR
 
 def main():
+    start_time = time.time()
     try:
         # Check if API key is provided
         if not GEMINI_API_KEY:
@@ -54,6 +56,13 @@ def main():
                 
         # Clean up large objects to free memory
         del matches, results, cvs, job_descriptions
+        
+        # Calculate and display total execution time
+        end_time = time.time()
+        total_time = end_time - start_time
+        hours, remainder = divmod(total_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        print(f"\nTotal execution time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
     
     finally:
         # Force garbage collection to clean up resources

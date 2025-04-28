@@ -1,6 +1,7 @@
 import os
 import sys
 import heapq
+import time
 from document_processor import extract_text, load_job_descriptions, load_cvs
 from matcher import CVJobMatcher
 from config import GEMINI_API_KEY
@@ -152,8 +153,23 @@ def batch_match_job_to_cvs(job_path, num_cvs=20, top_matches=5, max_retries=3):
     
     print(f"Matching Job: {job_name} with {len(cv_files)} CVs...")
     
+    # Track API calls for rate limiting
+    api_call_count = 0
+    
     # Process each CV
     for i, cv_file in enumerate(cv_files):
+        # Check if we need to pause for rate limiting (after 15 API calls)
+        if api_call_count >= 15:
+            print("\n=== RATE LIMIT REACHED ===")
+            print("Pausing for 60 seconds to avoid API rate limiting...")
+            for remaining in range(60, 0, -1):
+                sys.stdout.write(f"\rResuming in {remaining} seconds...")
+                sys.stdout.flush()
+                time.sleep(1)
+            print("\nResuming processing...")
+            # Reset the counter after the pause
+            api_call_count = 0
+        
         retry_count = 0
         success = False
         
@@ -184,6 +200,9 @@ def batch_match_job_to_cvs(job_path, num_cvs=20, top_matches=5, max_retries=3):
                 
                 # Match CV with job description
                 result = matcher.match(cv_content, job_content)
+                
+                # Increment API call counter after successful call
+                api_call_count += 1
                 
                 # Store result with CV info
                 all_results.append({

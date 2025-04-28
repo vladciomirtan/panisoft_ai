@@ -4,6 +4,8 @@ import numpy as np
 from tqdm import tqdm
 import requests
 import json
+import time
+import sys
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +40,8 @@ class CVJobMatcher:
             api_key: API key to use (if None, will use the one from config)
         """
         self.api_key = api_key or GEMINI_API_KEY
+        self.api_call_count = 0
+        self.last_reset_time = time.time()
         
         # Define the prompt template for matching
         self.system_prompt = """
@@ -146,6 +150,24 @@ class CVJobMatcher:
     
     def _call_gemini_api(self, user_content: str) -> str:
         """Call the Gemini API and return the response text."""
+        # Check if we need to pause for rate limiting (after 15 API calls)
+        current_time = time.time()
+        if current_time - self.last_reset_time >= 60:  # Reset counter every minute
+            self.api_call_count = 0
+            self.last_reset_time = current_time
+            
+        if self.api_call_count >= 15:
+            print("\n=== RATE LIMIT REACHED ===")
+            print("Pausing for 60 seconds to avoid API rate limiting...")
+            for remaining in range(60, 0, -1):
+                sys.stdout.write(f"\rResuming in {remaining} seconds...")
+                sys.stdout.flush()
+                time.sleep(1)
+            print("\nResuming processing...")
+            # Reset the counter after the pause
+            self.api_call_count = 0
+            self.last_reset_time = time.time()
+        
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
         
         headers = {
@@ -168,7 +190,24 @@ class CVJobMatcher:
         response = requests.post(url, headers=headers, data=json.dumps(data))
         
         if response.status_code != 200:
-            raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
+            if response.status_code == 429:  # Rate limit error
+                print("\n=== RATE LIMIT REACHED ===")
+                print("Pausing for 60 seconds to avoid API rate limiting...")
+                for remaining in range(60, 0, -1):
+                    sys.stdout.write(f"\rResuming in {remaining} seconds...")
+                    sys.stdout.flush()
+                    time.sleep(1)
+                print("\nResuming processing...")
+                # Reset the counter after the pause
+                self.api_call_count = 0
+                self.last_reset_time = time.time()
+                # Retry the request
+                response = requests.post(url, headers=headers, data=json.dumps(data))
+            else:
+                raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
+        
+        # Increment API call counter after successful call
+        self.api_call_count += 1
         
         response_json = response.json()
         
