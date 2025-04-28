@@ -45,6 +45,19 @@ class ResultItem(QFrame):
         details.setStyleSheet("color: #616161;")
         layout.addWidget(details)
 
+        # Add reasoning
+        reasoning = QLabel("Reasoning:")
+        reasoning.setFont(QFont('Segoe UI', 11, QFont.Weight.Bold))
+        reasoning.setStyleSheet("color: #424242; margin-top: 8px;")
+        layout.addWidget(reasoning)
+
+        reasoning_text = QLabel(match.get('reasoning', 'No reasoning provided'))
+        reasoning_text.setFont(QFont('Segoe UI', 11))
+        reasoning_text.setStyleSheet("color: #616161;")
+        reasoning_text.setWordWrap(True)
+        reasoning_text.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(reasoning_text)
+
 class ResultsDialog(QDialog):
     def __init__(self, results, name, parent=None):
         super().__init__(parent)
@@ -124,7 +137,27 @@ class ResultsDialog(QDialog):
         
         # Add close button
         close_button = QPushButton("Close")
-        close_button.setFixedWidth(120)
+        close_button.setFixedSize(80, 28)
+        close_button.setMinimumSize(80, 28)
+        close_button.setMaximumSize(80, 28)
+        close_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1976d2;
+                color: white;
+                border: none;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                min-width: 80px;
+                min-height: 28px;
+                max-width: 80px;
+                max-height: 28px;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+        """)
         close_button.clicked.connect(self.accept)
         main_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
         
